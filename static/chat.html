@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG 医疗问答系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .query-section {
+            margin-bottom: 30px;
+        }
+
+        .query-section label {
+            display: block;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .query-section textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 15px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 15px;
+            font-family: inherit;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+
+        .query-section textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .option-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .option-group input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .option-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 15px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-submit:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-submit:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .answer-section {
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 2px solid #e9ecef;
+        }
+
+        .answer-section h2 {
+            color: #495057;
+            margin-bottom: 20px;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .confidence-badge {
+            background: #28a745;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .confidence-medium {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .confidence-low {
+            background: #dc3545;
+            color: white;
+        }
+
+        .answer-content {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            line-height: 1.8;
+            color: #495057;
+            white-space: pre-wrap;
+        }
+
+        .references {
+            margin-top: 25px;
+        }
+
+        .references h3 {
+            font-size: 16px;
+            color: #495057;
+            margin-bottom: 15px;
+        }
+
+        .references ul {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .reference-item {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #667eea;
+        }
+
+        .reference-item .title {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 5px;
+        }
+
+        .reference-item .meta {
+            font-size: 13px;
+            color: #6c757d;
+        }
+
+        .similar-queries {
+            margin-top: 25px;
+            background: #fff3cd;
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        .similar-queries h3 {
+            font-size: 16px;
+            color: #856404;
+            margin-bottom: 15px;
+        }
+
+        .similar-queries .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .similar-queries .tag {
+            background: #ffc107;
+            color: #212529;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .similar-queries .tag:hover {
+            background: #e0a800;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 3px solid #667eea;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #dc3545;
+        }
+
+        .empty {
+            background: #d1ecf1;
+            color: #0c5460;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .patient-info {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .patient-info h4 {
+            color: #495057;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .patient-info .fields {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+        }
+
+        .patient-info label {
+            font-size: 12px;
+            color: #6c757d;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .patient-info input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .rag-process {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 8px;
+            margin-top: 25px;
+            font-size: 13px;
+        }
+
+        .rag-process h3 {
+            color: #495057;
+            margin-bottom: 15px;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .step {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 6px;
+            border-left: 3px solid #667eea;
+        }
+
+        .step-title {
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .step-content {
+            color: #495057;
+            line-height: 1.6;
+        }
+
+        .step-content pre {
+            background: #f1f3f4;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 12px;
+            margin-top: 10px;
+            border: 1px solid #e3f2fd;
+        }
+
+        .retrieved-docs {
+            margin-top: 10px;
+        }
+
+        .doc-item {
+            background: #e7f3ff;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            border: 1px solid #b8daff;
+        }
+
+        .doc-item .doc-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .doc-item .doc-id {
+            font-weight: 600;
+            color: #4c51bf;
+        }
+
+        .doc-item .similarity {
+            color: #6c757d;
+            font-size: 12px;
+        }
+
+        .doc-item .doc-content {
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .doc-item .doc-meta {
+            font-size: 11px;
+            color: #6c757d;
+            margin-top: 8px;
+            display: flex;
+            gap: 15px;
+        }
+
+        .doc-item .doc-meta span {
+            background: #dee2e6;
+            padding: 2px 8px;
+            border-radius: 3px;
+        }
+
+        .final-prompt {
+            background: #fffbeb;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+            border: 1px solid #ffeaa7;
+        }
+
+        .final-prompt h4 {
+            color: #d68910;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .final-prompt pre {
+            background: white;
+            padding: 15px;
+            border-radius: 4px;
+            font-size: 11px;
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .toggle-process {
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        .toggle-process button {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+
+        .toggle-process button:hover {
+            background: #5a6268;
+        }
+
+        .toggle-process button.active {
+            background: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏥️ RAG 医疗问答系统</h1>
+            <p>基于向量检索的智能医疗问答助手</p>
+        </div>
+
+        <div class="content">
+            <div class="query-section">
+                <label for="query">请输入您的问题</label>
+                <textarea 
+                    id="query" 
+                    placeholder="例如：高血压患者应该如何控制饮食？&#10;糖尿病患者有什么饮食注意事项？&#10;冠心病的早期症状是什么？"
+                ></textarea>
+
+                <div class="patient-info">
+                    <h4>👤 患者信息（可选）</h4>
+                    <div class="fields">
+                        <div>
+                            <label>年龄</label>
+                            <input type="number" id="patientAge" placeholder="例如：45" min="0" max="150">
+                        </div>
+                        <div>
+                            <label>性别</label>
+                            <select id="patientGender">
+                                <option value="">请选择</option>
+                                <option value="male">男</option>
+                                <option value="female">女</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="options">
+                    <div class="option-group">
+                        <label>返回结果数</label>
+                        <input type="number" id="maxResults" value="5" min="1" max="20">
+                    </div>
+                    <div class="option-group">
+                        <label>科室分类</label>
+                        <select id="department">
+                            <option value="">全部</option>
+                            <option value="心内科">心内科</option>
+                            <option value="内分泌科">内分泌科</option>
+                            <option value="眼科">眼科</option>
+                            <option value="通用">通用</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button class="btn-submit" onclick="askQuestion()" id="submitBtn">
+                    🤖 智能问答
+                </button>
+            </div>
+
+            <div id="answerSection" class="answer-section" style="display: none;">
+                <h2>
+                    💡 AI 回答
+                    <span id="confidenceBadge" class="confidence-badge">置信度: --</span>
+                </h2>
+                <div id="answerContent" class="answer-content"></div>
+
+                <div id="references" class="references" style="display: none;">
+                    <h3>📚 参考来源</h3>
+                    <ul id="referencesList"></ul>
+                </div>
+
+                <div id="similarQueries" class="similar-queries" style="display: none;">
+                    <h3>🔍 您可能还想了解</h3>
+                    <div id="similarQueriesTags" class="tags"></div>
+                </div>
+
+                <div class="toggle-process">
+                    <button id="toggleRagBtn" onclick="toggleRagProcess()">
+                        🔬 查看 RAG 检索过程
+                    </button>
+                </div>
+
+                <div id="ragProcess" class="rag-process" style="display: none;">
+                    <h3>
+                        <span>⚙️ RAG 检索过程详解</span>
+                    </h3>
+
+                    <div class="step">
+                        <div class="step-title">步骤 1: 用户问题 Embedding 编码</div>
+                        <div class="step-content">
+                            <p>将用户问题转换为向量表示</p>
+                            <pre id="queryEmbeddingOutput"></pre>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-title">步骤 2: 向量数据库检索</div>
+                        <div class="step-content">
+                            <p>在 ChromaDB 中搜索 Top-<span id="topKOutput"></span> 个相似文档（相似度阈值: <span id="thresholdOutput"></span>）</p>
+                            <div id="retrievedDocs" class="retrieved-docs"></div>
+                        </div>
+                    </div>
+
+                    <div class="step">
+                        <div class="step-title">步骤 3: 最终 Prompt 构建</div>
+                        <div class="step-content">
+                            <p>将检索到的相关文档拼接后发送给 LLM 生成答案</p>
+                            <div class="final-prompt">
+                                <h4>📋 完整 Prompt：</h4>
+                                <pre id="finalPromptOutput"></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="loading" class="loading" style="display: none;">
+                正在思考中
+            </div>
+
+            <div id="error" class="error" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000/api/v1/medical';
+
+        async function askQuestion() {
+            const query = document.getElementById('query').value.trim();
+            if (!query) {
+                showError('请输入问题');
+                return;
+            }
+
+            const patientAge = document.getElementById('patientAge').value;
+            const patientGender = document.getElementById('patientGender').value;
+            const maxResults = document.getElementById('maxResults').value || 5;
+            const department = document.getElementById('department').value;
+
+            const requestBody = {
+                query: query,
+                options: {
+                    max_results: parseInt(maxResults),
+                    include_references: true
+                }
+            };
+
+            if (patientAge || patientGender) {
+                requestBody.patient_profile = {};
+                if (patientAge) requestBody.patient_profile.age = parseInt(patientAge);
+                if (patientGender) requestBody.patient_profile.gender = patientGender;
+            }
+
+            if (department) {
+                requestBody.options.department = department;
+            }
+
+            showLoading();
+            hideError();
+            hideAnswer();
+
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+
+            try {
+                const response = await fetch(`${API_BASE}/chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || '请求失败');
+                }
+
+                hideLoading();
+                showAnswer(data);
+            } catch (error) {
+                hideLoading();
+                showError(error.message);
+            } finally {
+                submitBtn.disabled = false;
+            }
+        }
+
+        let ragData = null;
+
+        function showAnswer(data) {
+            ragData = data;
+
+            const answerSection = document.getElementById('answerSection');
+            const answerContent = document.getElementById('answerContent');
+            const confidenceBadge = document.getElementById('confidenceBadge');
+            const references = document.getElementById('references');
+            const referencesList = document.getElementById('referencesList');
+            const similarQueries = document.getElementById('similarQueries');
+            const similarQueriesTags = document.getElementById('similarQueriesTags');
+
+            answerSection.style.display = 'block';
+            answerContent.textContent = data.answer;
+
+            // 置信度
+            const confidence = data.confidence || 0;
+            confidenceBadge.textContent = `置信度: ${(confidence * 100).toFixed(0)}%`;
+            confidenceBadge.className = 'confidence-badge';
+            if (confidence >= 0.8) {
+                confidenceBadge.classList.add('confidence-high');
+            } else if (confidence >= 0.5) {
+                confidenceBadge.classList.add('confidence-medium');
+            } else {
+                confidenceBadge.classList.add('confidence-low');
+            }
+
+            // 参考来源
+            if (data.references && data.references.length > 0) {
+                references.style.display = 'block';
+                referencesList.innerHTML = data.references.map(ref => `
+                    <li class="reference-item">
+                        <div class="title">${ref.title}</div>
+                        <div class="meta">
+                            📝 ${ref.author} | 🏥 ${ref.department} | ⭐ ${ref.evidence_level}级
+                        </div>
+                    </li>
+                `).join('');
+            } else {
+                references.style.display = 'none';
+            }
+
+            // 相似问题
+            if (data.similar_queries && data.similar_queries.length > 0) {
+                similarQueries.style.display = 'block';
+                similarQueriesTags.innerHTML = data.similar_queries.map(q => `
+                    <span class="tag" onclick="clickSimilarQuery('${q}')">${q}</span>
+                `).join('');
+            } else {
+                similarQueries.style.display = 'none';
+            }
+        }
+
+        function toggleRagProcess() {
+            const ragProcess = document.getElementById('ragProcess');
+            const toggleBtn = document.getElementById('toggleRagBtn');
+
+            if (ragProcess.style.display === 'none') {
+                ragProcess.style.display = 'block';
+                toggleBtn.classList.add('active');
+                toggleBtn.textContent = '🔽 隐藏 RAG 检索过程';
+                showRagProcess();
+            } else {
+                ragProcess.style.display = 'none';
+                toggleBtn.classList.remove('active');
+                toggleBtn.textContent = '🔬 查看 RAG 检索过程';
+            }
+        }
+
+        async function showRagProcess() {
+            if (!ragData || !ragData._rag_details) {
+                // 如果没有详细数据，重新请求获取
+                try {
+                    const response = await fetch(`${API_BASE}/rag-process`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            query: document.getElementById('query').value,
+                            options: {
+                                max_results: parseInt(document.getElementById('maxResults').value || 5)
+                            }
+                        })
+                    });
+                    const data = await response.json();
+                    displayRagProcess(data);
+                } catch (e) {
+                    console.error('获取 RAG 过程失败:', e);
+                }
+                return;
+            }
+
+            displayRagProcess(ragData._rag_details);
+        }
+
+        function displayRagProcess(details) {
+            // 步骤 1: Query Embedding
+            document.getElementById('queryEmbeddingOutput').textContent =
+                `模型: ${details.embedding_model || 'BAAI/bge-large-zh-v1.5'}\n` +
+                `向量维度: ${details.embedding_dim || '1024'}\n` +
+                `归一化: ${details.normalized || 'true'}\n` +
+                `查询向量前 50 维度:\n[${(details.query_embedding || []).slice(0, 50).map(v => v.toFixed(4)).join(', ')}...]`;
+
+            // 步骤 2: 检索结果
+            document.getElementById('topKOutput').textContent = details.top_k || 5;
+            document.getElementById('thresholdOutput').textContent = details.similarity_threshold || 0.7;
+
+            const retrievedDocs = document.getElementById('retrievedDocs');
+            if (details.retrieved_docs && details.retrieved_docs.length > 0) {
+                retrievedDocs.innerHTML = details.retrieved_docs.map((doc, index) => `
+                    <div class="doc-item">
+                        <div class="doc-header">
+                            <span class="doc-id">📄 ${doc.id || `doc_${index}`}</span>
+                            <span class="similarity">相似度: ${(doc.similarity * 100).toFixed(2)}%</span>
+                        </div>
+                        <div class="doc-content">${escapeHtml(doc.content || doc.document || '')}</div>
+                        <div class="doc-meta">
+                            <span>🏥 ${doc.category || '未知'}</span>
+                            <span>🏢 ${doc.department || '未知'}</span>
+                            ${doc.distance ? `<span>距离: ${doc.distance.toFixed(4)}</span>` : ''}
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                retrievedDocs.innerHTML = '<p style="color: #6c757d; text-align: center; padding: 20px;">未检索到相关文档</p>';
+            }
+
+            // 步骤 3: Final Prompt
+            document.getElementById('finalPromptOutput').textContent = details.final_prompt || '暂无详细 Prompt';
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function clickSimilarQuery(query) {
+            document.getElementById('query').value = query;
+            askQuestion();
+        }
+
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        function showError(message) {
+            const errorEl = document.getElementById('error');
+            errorEl.textContent = `❌ ${message}`;
+            errorEl.style.display = 'block';
+        }
+
+        function hideError() {
+            document.getElementById('error').style.display = 'none';
+        }
+
+        function hideAnswer() {
+            document.getElementById('answerSection').style.display = 'none';
+        }
+
+        // 按回车提交
+        document.getElementById('query').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                askQuestion();
+            }
+        });
+    </script>
+</body>
+</html>

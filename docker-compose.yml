@@ -1,0 +1,42 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/medical_rag
+      - REDIS_URL=redis://redis:6379/0
+      - EMBEDDING_MODEL=/app/models/bge-small-zh-v1.5
+      - HF_ENDPOINT=https://hf-mirror.com
+      - TRANSFORMERS_OFFLINE=1
+      - HF_DATASETS_OFFLINE=1
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./static:/app/static
+      - ./data:/app/data
+      - ./models:/app/models
+
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: medical_rag
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  redis_data:
+  model_cache:

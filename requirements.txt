@@ -1,0 +1,36 @@
+# 企业级RAG系统依赖
+
+# 核心框架
+fastapi==0.109.0
+uvicorn==0.28.0
+pydantic==2.6.3
+pydantic-settings==2.1.0
+
+# 数据库
+sqlalchemy==2.0.27
+asyncpg==0.29.0
+redis==5.0.1
+
+# 向量数据库
+chromadb==0.4.22
+
+# 嵌入模型
+sentence-transformers==2.2.2
+torch==2.0.1
+transformers==4.36.2
+huggingface-hub==0.19.4
+
+# RAG框架
+langchain==0.1.20
+langchain-community==0.0.38
+
+# 文档处理
+pypdf==4.0.2
+python-docx==1.1.0
+markdown==3.5.2
+
+# 工具库
+python-dotenv==1.0.1
+tiktoken==0.5.2
+numpy==1.26.4
+python-multipart
