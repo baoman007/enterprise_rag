@@ -74,7 +74,7 @@ class LLMService:
     def _generate_rule_based_answer(self, query: str, context_docs: List[str]) -> str:
         """
         基于规则生成答案（模拟 LLM 输出）
-        
+
         Args:
             query: 用户问题
             context_docs: 相关文档
@@ -175,6 +175,39 @@ class LLMService:
             similarity = min(1.0, similarity + 0.1)
         
         return round(similarity, 2)
+
+    def _generate_raw_answer(self, prompt: str) -> str:
+        """
+        直接生成答案（供评估服务使用）
+
+        Args:
+            prompt: 完整的提示词
+
+        Returns:
+            生成的答案
+        """
+        # 这里是简化版本，实际应该调用真实的 LLM API
+        # 如果需要连接真实的 LLM，可以在这里实现
+        import json
+        import re
+
+        # 检测是否是评估请求
+        if "信息检索评估专家" in prompt:
+            # 模拟 AI 评估响应
+            return """{
+  "relevance_labels": {
+    "文档 1": true,
+    "文档 2": true,
+    "文档 3": false,
+    "文档 4": true,
+    "文档 5": false
+  },
+  "rating": "良好",
+  "comment": "检索结果整体质量良好。检索到了3个相关文档（文档1、2、4），覆盖了查询的核心内容。但文档3和文档5与查询相关性较低，可以进一步优化检索算法以提高精确率。"
+}"""
+
+        # 对于其他类型的 prompt，返回简单的回复
+        return "已收到您的请求。"
 
 
 # 全局实例

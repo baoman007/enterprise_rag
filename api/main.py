@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 import uvicorn
 import os
 
-from .routers import medical, knowledge, audit
+from .routers import medical, knowledge, audit, evaluation
 from .core.config import settings
 from .core.database import init_db
 
@@ -47,6 +47,7 @@ app.add_middleware(
 app.include_router(medical.router, prefix="/api/v1/medical", tags=["医疗问答"])
 app.include_router(knowledge.router, prefix="/api/v1/knowledge", tags=["知识库管理"])
 app.include_router(audit.router, prefix="/api/v1/audit", tags=["审计日志"])
+app.include_router(evaluation.router, prefix="/api/v1/evaluation", tags=["系统评估"])
 
 # 挂载静态文件（向量数据库查看器）
 static_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")
