@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI辅助标注准确性测试 - 调试版</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .content-area {
+            padding: 30px;
+        }
+
+        .query-selector {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .query-btn {
+            padding: 12px 20px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.95em;
+        }
+
+        .query-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .query-btn.active {
+            background: #667eea;
+            color: white;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .query-display {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 2px solid #e9ecef;
+        }
+
+        .query-display p {
+            margin-top: 10px;
+            font-size: 1.2em;
+            line-height: 1.6;
+        }
+
+        .doc-item {
+            background: white;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            border: 2px solid #e9ecef;
+        }
+
+        .doc-item.relevant {
+            border-color: #4CAF50;
+            background: #f1f8f4;
+        }
+
+        .doc-item.irrelevant {
+            border-color: #f44336;
+            background: #fef5f5;
+        }
+
+        .doc-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .doc-id {
+            font-weight: 600;
+            color: #666;
+        }
+
+        .doc-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .relevant-btn {
+            padding: 5px 15px;
+            border: 2px solid #4CAF50;
+            background: white;
+            color: #4CAF50;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9em;
+        }
+
+        .relevant-btn:hover {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .relevant-btn.active {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .irrelevant-btn {
+            padding: 5px 15px;
+            border: 2px solid #f44336;
+            background: white;
+            color: #f44336;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9em;
+        }
+
+        .irrelevant-btn:hover {
+            background: #f44336;
+            color: white;
+        }
+
+        .irrelevant-btn.active {
+            background: #f44336;
+            color: white;
+        }
+
+        .doc-content {
+            line-height: 1.8;
+            color: #333;
+        }
+
+        .debug-panel {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+
+        .debug-panel h4 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+
+        .ai-annotation {
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .ai-relevant {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .ai-irrelevant {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 AI辅助标注准确性测试 - 调试版</h1>
+        </div>
+
+        <div class="content-area">
+            <div class="debug-panel">
+                <h4>🐛 调试信息</h4>
+                <div id="debug-log">页面已加载，等待操作...</div>
+            </div>
+
+            <div class="query-selector">
+                <button class="query-btn active" onclick="selectQuery(0)">高血压饮食建议</button>
+                <button class="query-btn" onclick="selectQuery(1)">糖尿病运动指南</button>
+                <button class="query-btn" onclick="selectQuery(2)">冠心病症状识别</button>
+                <button class="query-btn" onclick="selectQuery(3)">儿童感冒护理</button>
+                <button class="query-btn" onclick="selectQuery(4)">老年人预防跌倒</button>
+            </div>
+
+            <div class="query-display">
+                <p id="current-query">高血压患者应该注意哪些饮食禁忌？</p>
+            </div>
+
+            <div id="docs-container">
+                <!-- 动态生成文档列表 -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 测试数据集
+        const testQueries = [
+            {
+                query: "高血压患者应该注意哪些饮食禁忌？",
+                documents: [
+                    {
+                        id: "DOC001",
+                        content: "高血压患者在饮食方面应该避免高盐食物，每日盐摄入量应控制在6克以下。建议少吃咸菜、腌制品、酱油等高盐调味品，多食用新鲜蔬菜水果。",
+                        isRelevant: true
+                    },
+                    {
+                        id: "DOC002",
+                        content: "糖尿病患者需要控制碳水化合物的摄入，建议选择低升糖指数的食物。主食可以选择糙米、全麦面包等全谷物，避免精制糖和甜食。",
+                        isRelevant: false
+                    },
+                    {
+                        id: "DOC003",
+                        content: "高血压患者应避免高脂肪食物，特别是饱和脂肪酸含量高的动物脂肪。建议选择瘦肉、鱼类等优质蛋白，减少油炸食品的摄入。",
+                        isRelevant: true
+                    }
+                ]
+            },
+            {
+                query: "糖尿病患者适合做什么运动？",
+                documents: [
+                    {
+                        id: "DOC001",
+                        content: "糖尿病患者进行运动时应选择中等强度的有氧运动，如快走、慢跑、游泳等。建议每次运动30分钟，每周至少5次。",
+                        isRelevant: true
+                    },
+                    {
+                        id: "DOC002",
+                        content: "高血压患者运动时需要注意监测血压，避免剧烈运动。建议选择散步、太极拳等轻度运动，运动时间控制在30分钟以内。",
+                        isRelevant: false
+                    },
+                    {
+                        id: "DOC003",
+                        content: "糖尿病患者在运动前需要检测血糖，血糖低于5.6mmol/L时不宜运动。运动时应随身携带糖果，以防低血糖发生。",
+                        isRelevant: true
+                    }
+                ]
+            },
+            {
+                query: "冠心病的典型症状有哪些？",
+                documents: [
+                    {
+                        id: "DOC001",
+                        content: "冠心病的典型症状是胸痛，通常位于胸骨后或心前区，表现为压榨性疼痛，可向左肩、左臂、下颌等部位放射。",
+                        isRelevant: true
+                    },
+                    {
+                        id: "DOC002",
+                        content: "高血压的主要症状是头痛、头晕、耳鸣、心慌等。当血压显著升高时，可能出现恶心呕吐、视力模糊等症状。",
+                        isRelevant: false
+                    },
+                    {
+                        id: "DOC003",
+                        content: "心绞痛发作时，患者常伴有胸闷、气短、心悸等症状。疼痛通常持续3-5分钟，休息或含服硝酸甘油后可缓解。",
+                        isRelevant: true
+                    }
+                ]
+            },
+            {
+                query: "儿童感冒应该如何护理？",
+                documents: [
+                    {
+                        id: "DOC001",
+                        content: "儿童感冒期间应多喝水，保持充足的水分摄入。温水、淡盐水、果汁都可以，避免碳酸饮料和含糖饮料。",
+                        isRelevant: true
+                    },
+                    {
+                        id: "DOC002",
+                        content: "感冒儿童应注意休息，保证充足的睡眠。减少户外活动，避免剧烈运动，让身体有足够的精力对抗病毒。",
+                        isRelevant: true
+                    },
+                    {
+                        id: "DOC003",
+                        content: "儿童感冒后饮食应以清淡易消化为主，如稀粥、面条、蒸蛋等。避免油腻、辛辣食物，以免加重肠胃负担。",
+                        isRelevant: true
+                    },
+                    {
+                        id: "DOC004",
+                        content: "高血压患者感冒时应注意血压监测，因为感冒可能导致血压波动。某些感冒药（如含麻黄碱的药物）可能升高血压。",
+                        isRelevant: false
+                    },
+                    {
+                        id: "DOC005",
+                        content: "儿童感冒发热时体温超过38.5°C可使用退烧药，如布洛芬或对乙酰氨基酚。用药前注意阅读说明书，按体重计算剂量。",
+                        isRelevant: true
+                    }
+                ]
+            },
+            {
+                query: "老年人如何预防跌倒？",
+                documents: [
+                    {
+                        id: "DOC001",
+                        content: "老年人家中应安装扶手，特别是在卫生间、浴室等湿滑区域。床边和马桶旁的扶手可以提供额外支撑，减少跌倒风险。",
+                        isRelevant: true
+                    },
+                    {
+                        id: "DOC002",
+                        content: "老年人应选择合适的鞋子，鞋底要有防滑纹路，鞋跟不宜过高。避免穿拖鞋或高跟鞋外出，鞋子要合脚舒适。",
+                        isRelevant: true
+                    },
+                    {
+                        id: "DOC003",
+                        content: "家中地面应保持干燥，及时清理水渍。浴室地面铺防滑垫，避免使用抛光地砖。室内光线要充足，避免夜间行走时看不清。",
+                        isRelevant: true
+                    },
+                    {
+                        id: "DOC004",
+                        content: "高血压患者起床时应慢，先在床上坐一会儿，再缓慢站起来。起床过快可能导致体位性低血压，引起头晕跌倒。",
+                        isRelevant: false
+                    },
+                    {
+                        id: "DOC005",
+                        content: "老年人应进行适当的平衡训练和肌肉力量锻炼，如太极、平衡球等。这些运动可以提高身体协调性，降低跌倒风险。",
+                        isRelevant: true
+                    }
+                ]
+            }
+        ];
+
+        let currentQueryIndex = 0;
+        let userAnnotations = {};
+
+        function debugLog(message) {
+            const log = document.getElementById('debug-log');
+            const timestamp = new Date().toLocaleTimeString();
+            log.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+            console.log(message);
+        }
+
+        // 初始化
+        window.addEventListener('DOMContentLoaded', function() {
+            debugLog('DOM加载完成');
+            try {
+                renderDocs();
+                debugLog('初始文档渲染完成');
+            } catch (error) {
+                debugLog(`错误: ${error.message}`);
+                console.error(error);
+            }
+        });
+
+        // 选择查询
+        function selectQuery(index) {
+            debugLog(`点击按钮: selectQuery(${index})`);
+            
+            try {
+                currentQueryIndex = index;
+                userAnnotations = {};
+
+                document.querySelectorAll('.query-btn').forEach((btn, i) => {
+                    btn.classList.toggle('active', i === index);
+                });
+
+                const selectedQuery = testQueries[index];
+                debugLog(`选中查询: "${selectedQuery.query}"`);
+                debugLog(`文档数量: ${selectedQuery.documents.length}`);
+
+                document.getElementById('current-query').textContent = selectedQuery.query;
+
+                renderDocs();
+                debugLog('文档列表更新完成');
+            } catch (error) {
+                debugLog(`错误: ${error.message}`);
+                console.error(error);
+            }
+        }
+
+        // 渲染文档列表
+        function renderDocs() {
+            debugLog('开始渲染文档...');
+            
+            try {
+                const container = document.getElementById('docs-container');
+                const documents = testQueries[currentQueryIndex].documents;
+                
+                container.innerHTML = '';
+                
+                documents.forEach((doc, index) => {
+                    debugLog(`处理文档 ${index + 1}/${documents.length}: ${doc.id}`);
+                    debugLog(`AI标注: ${doc.isRelevant ? '相关' : '不相关'}`);
+
+                    const docElement = document.createElement('div');
+                    docElement.className = 'doc-item';
+                    docElement.id = `doc-${doc.id}`;
+
+                    // 显示AI标注
+                    const aiAnnotation = doc.isRelevant ? '✓ AI判定: 相关' : '✗ AI判定: 不相关';
+                    const aiAnnotationClass = doc.isRelevant ? 'ai-relevant' : 'ai-irrelevant';
+
+                    docElement.innerHTML = `
+                        <div class="doc-header">
+                            <span class="doc-id">${doc.id}</span>
+                            <span class="ai-annotation ${aiAnnotationClass}">${aiAnnotation}</span>
+                            <div class="doc-actions">
+                                <button class="relevant-btn" onclick="toggleRelevance('${doc.id}', true)">
+                                    ✓ 我觉得相关
+                                </button>
+                                <button class="irrelevant-btn" onclick="toggleRelevance('${doc.id}', false)">
+                                    ✗ 我觉得不相关
+                                </button>
+                            </div>
+                        </div>
+                        <div class="doc-content">${doc.content}</div>
+                    `;
+
+                    container.appendChild(docElement);
+                });
+                
+                debugLog(`成功渲染 ${documents.length} 个文档`);
+            } catch (error) {
+                debugLog(`渲染错误: ${error.message}`);
+                console.error(error);
+            }
+        }
+
+        // 切换标注
+        function toggleRelevance(docId, isRelevant) {
+            debugLog(`标注操作: ${docId} -> ${isRelevant ? '相关' : '不相关'}`);
+
+            try {
+                const docElement = document.getElementById(`doc-${docId}`);
+                const relevantBtn = docElement.querySelector('.relevant-btn');
+                const irrelevantBtn = docElement.querySelector('.irrelevant-btn');
+
+                // 获取AI的标注
+                const currentDoc = testQueries[currentQueryIndex].documents.find(d => d.id === docId);
+                const aiAnnotation = currentDoc.isRelevant;
+
+                if (userAnnotations[docId] === isRelevant) {
+                    delete userAnnotations[docId];
+                    relevantBtn.classList.remove('active');
+                    irrelevantBtn.classList.remove('active');
+                    docElement.classList.remove('relevant', 'irrelevant');
+                    debugLog(`取消标注: ${docId}`);
+                } else {
+                    userAnnotations[docId] = isRelevant;
+                    relevantBtn.classList.add('active');
+                    irrelevantBtn.classList.add('active');
+                    docElement.classList.remove('relevant', 'irrelevant');
+                    docElement.classList.add(isRelevant ? 'relevant' : 'irrelevant');
+
+                    // 对比AI标注和人工标注
+                    const isMatch = aiAnnotation === isRelevant;
+                    if (isMatch) {
+                        debugLog(`✅ ${docId}: AI标注与人工标注一致`);
+                    } else {
+                        debugLog(`❌ ${docId}: AI标注(${aiAnnotation ? '相关' : '不相关'}) ≠ 人工标注(${isRelevant ? '相关' : '不相关'})`);
+                    }
+                }
+
+                // 更新统计信息
+                updateStats();
+            } catch (error) {
+                debugLog(`标注错误: ${error.message}`);
+                console.error(error);
+            }
+        }
+
+        // 更新统计信息
+        function updateStats() {
+            const documents = testQueries[currentQueryIndex].documents;
+            let totalDocs = documents.length;
+            let annotatedDocs = Object.keys(userAnnotations).length;
+            let matches = 0;
+
+            Object.keys(userAnnotations).forEach(docId => {
+                const doc = documents.find(d => d.id === docId);
+                if (doc && doc.isRelevant === userAnnotations[docId]) {
+                    matches++;
+                }
+            });
+
+            const agreementRate = annotatedDocs > 0 ? ((matches / annotatedDocs) * 100).toFixed(1) : 0;
+
+            debugLog(`📊 标注统计: 已标注 ${annotatedDocs}/${totalDocs}, 一致率 ${agreementRate}%`);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,1392 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>标注功能演示 - 人工标注 vs AI辅助标注</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .mode-selector {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            padding: 30px;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .mode-btn {
+            padding: 15px 40px;
+            font-size: 1.1em;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .mode-btn:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .mode-btn.active {
+            background: #667eea;
+            color: white;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .content-area {
+            padding: 30px;
+        }
+
+        .section {
+            display: none;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        .info-box {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+
+        .info-box h3 {
+            color: #1976D2;
+            margin-bottom: 10px;
+        }
+
+        .info-box ul {
+            margin-left: 20px;
+            line-height: 1.8;
+        }
+
+        .annotation-workspace {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 20px;
+        }
+
+        .panel {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            border: 1px solid #e9ecef;
+        }
+
+        .panel h3 {
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .query-display {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 2px solid #667eea;
+        }
+
+        .query-display strong {
+            color: #667eea;
+            font-size: 1.1em;
+        }
+
+        .query-display p {
+            margin-top: 10px;
+            font-size: 1.2em;
+            line-height: 1.6;
+        }
+
+        .doc-item {
+            background: white;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+
+        .doc-item:hover {
+            border-color: #667eea;
+        }
+
+        .doc-item.relevant {
+            border-color: #4CAF50;
+            background: #f1f8f4;
+        }
+
+        .doc-item.irrelevant {
+            border-color: #f44336;
+            background: #fef5f5;
+        }
+
+        .doc-item.ai-suggested {
+            border-color: #FF9800;
+            border-style: dashed;
+        }
+
+        .doc-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .doc-id {
+            font-weight: 600;
+            color: #666;
+        }
+
+        .doc-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .relevant-btn {
+            padding: 5px 15px;
+            border: 2px solid #4CAF50;
+            background: white;
+            color: #4CAF50;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9em;
+        }
+
+        .relevant-btn:hover {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .relevant-btn.active {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .irrelevant-btn {
+            padding: 5px 15px;
+            border: 2px solid #f44336;
+            background: white;
+            color: #f44336;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9em;
+        }
+
+        .irrelevant-btn:hover {
+            background: #f44336;
+            color: white;
+        }
+
+        .irrelevant-btn.active {
+            background: #f44336;
+            color: white;
+        }
+
+        .ai-suggestion {
+            display: inline-block;
+            padding: 3px 10px;
+            background: #FF9800;
+            color: white;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+
+        .doc-content {
+            line-height: 1.8;
+            color: #333;
+        }
+
+        .ai-assistant {
+            background: #fff3e0;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 2px solid #FF9800;
+        }
+
+        .ai-assistant h4 {
+            color: #E65100;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .ai-assistant .ai-comment {
+            line-height: 1.8;
+            color: #555;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        .stats-panel {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .stats-panel h3 {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .stat-item {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: 15px;
+            font-size: 1.1em;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .save-btn {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .save-btn:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
+        }
+
+        .ai-assist-btn {
+            background: #FF9800;
+            color: white;
+        }
+
+        .ai-assist-btn:hover {
+            background: #F57C00;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 152, 0, 0.3);
+        }
+
+        .reset-btn {
+            background: #f44336;
+            color: white;
+        }
+
+        .reset-btn:hover {
+            background: #da190b;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(244, 67, 54, 0.3);
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 15px;
+            text-align: left;
+            border: 2px solid #e9ecef;
+        }
+
+        .comparison-table th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: 600;
+        }
+
+        .comparison-table tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        .comparison-table .check {
+            color: #4CAF50;
+            font-size: 1.5em;
+        }
+
+        .comparison-table .cross {
+            color: #f44336;
+            font-size: 1.5em;
+        }
+
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        .step {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #e9ecef;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: 600;
+            color: #666;
+        }
+
+        .step.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .step.completed {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .step-line {
+            width: 50px;
+            height: 3px;
+            background: #e9ecef;
+        }
+
+        .step-line.active {
+            background: #667eea;
+        }
+
+        .step-line.completed {
+            background: #4CAF50;
+        }
+
+        @media (max-width: 1024px) {
+            .annotation-workspace {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .badge-manual {
+            background: #2196F3;
+            color: white;
+        }
+
+        .badge-ai {
+            background: #FF9800;
+            color: white;
+        }
+
+        .badge-hybrid {
+            background: #9C27B0;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📚 标注功能演示</h1>
+            <p>学习人工标注与AI辅助标注的工作流程</p>
+        </div>
+
+        <div class="mode-selector">
+            <button class="mode-btn active" onclick="switchMode('manual')">
+                人工标注模式
+            </button>
+            <button class="mode-btn" onclick="switchMode('ai')">
+                AI辅助标注模式
+            </button>
+            <button class="mode-btn" onclick="switchMode('error')">
+                AI标注错误案例
+            </button>
+            <button class="mode-btn" onclick="switchMode('comparison')">
+                对比分析
+            </button>
+        </div>
+
+        <div class="content-area">
+            <!-- 人工标注模式 -->
+            <div id="manual-mode" class="section active">
+                <div class="info-box">
+                    <h3>📝 人工标注模式</h3>
+                    <ul>
+                        <li>标注者手动阅读每个检索到的文档</li>
+                        <li>根据查询问题，判断文档是否相关</li>
+                        <li>完全依赖人工判断，适合质量要求高的场景</li>
+                        <li>优点：准确度高，缺点：耗时费力</li>
+                    </ul>
+                </div>
+
+                <div class="query-display">
+                    <strong>当前查询问题：</strong>
+                    <p>高血压患者应该注意哪些饮食禁忌？</p>
+                </div>
+
+                <div class="annotation-workspace">
+                    <div class="panel">
+                        <h3>📄 待标注文档列表</h3>
+                        <div id="manual-docs-container">
+                            <!-- 动态生成文档列表 -->
+                        </div>
+                    </div>
+
+                    <div class="panel">
+                        <h3>📊 标注进度统计</h3>
+                        <div class="stats-panel" style="background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);">
+                            <div class="stats-grid">
+                                <div class="stat-item">
+                                    <div class="stat-value" id="manual-total">5</div>
+                                    <div class="stat-label">总文档数</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-value" id="manual-annotated">0</div>
+                                    <div class="stat-label">已标注数</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-value" id="manual-relevant">0</div>
+                                    <div class="stat-label">相关文档</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="action-buttons">
+                            <button class="action-btn reset-btn" onclick="resetManualAnnotation()">
+                                重置标注
+                            </button>
+                            <button class="action-btn save-btn" onclick="saveManualAnnotation()">
+                                保存标注
+                            </button>
+                        </div>
+
+                        <div id="manual-save-message" style="margin-top: 15px; padding: 10px; border-radius: 8px; display: none;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI辅助标注模式 -->
+            <div id="ai-mode" class="section">
+                <div class="info-box">
+                    <h3>🤖 AI辅助标注模式</h3>
+                    <ul>
+                        <li>AI模型自动分析文档与查询的相关性</li>
+                        <li>标注者可以接受、修改或拒绝AI的建议</li>
+                        <li>大幅提高标注效率，适合大规模数据标注</li>
+                        <li>优点：效率高，缺点：需要人工审核</li>
+                    </ul>
+                </div>
+
+                <div class="query-display">
+                    <strong>当前查询问题：</strong>
+                    <p>高血压患者应该注意哪些饮食禁忌？</p>
+                </div>
+
+                <div class="ai-assistant" id="ai-assistant" style="display: none;">
+                    <h4>🤖 AI标注助手</h4>
+                    <p>AI已自动完成标注，请审核以下建议：</p>
+                    <div class="ai-comment" id="ai-comment"></div>
+                </div>
+
+                <div class="annotation-workspace">
+                    <div class="panel">
+                        <h3>📄 待标注文档列表 <span class="badge badge-ai">AI辅助</span></h3>
+                        <div id="ai-docs-container">
+                            <!-- 动态生成文档列表 -->
+                        </div>
+                    </div>
+
+                    <div class="panel">
+                        <h3>📊 标注进度统计</h3>
+                        <div class="stats-panel" style="background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);">
+                            <div class="stats-grid">
+                                <div class="stat-item">
+                                    <div class="stat-value" id="ai-total">5</div>
+                                    <div class="stat-label">总文档数</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-value" id="ai-annotated">0</div>
+                                    <div class="stat-label">已审核数</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-value" id="ai-relevant">0</div>
+                                    <div class="stat-label">相关文档</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="action-buttons">
+                            <button class="action-btn reset-btn" onclick="resetAIAnnotation()">
+                                重置标注
+                            </button>
+                            <button class="action-btn ai-assist-btn" onclick="triggerAIAnnotation()">
+                                AI自动标注
+                            </button>
+                            <button class="action-btn save-btn" onclick="saveAIAnnotation()">
+                                保存标注
+                            </button>
+                        </div>
+
+                        <div id="ai-save-message" style="margin-top: 15px; padding: 10px; border-radius: 8px; display: none;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI标注错误案例模式 -->
+            <div id="error-mode" class="section">
+                <div class="info-box" style="background: #fff3e0; border-left-color: #FF9800;">
+                    <h3>⚠️ AI标注不准确的情况</h3>
+                    <ul>
+                        <li>AI标注虽然高效，但并非100%准确</li>
+                        <li>通过实际案例了解AI标注的各种错误类型</li>
+                        <li>理解为什么需要人工审核AI的标注结果</li>
+                        <li>学习如何识别和修正AI标注错误</li>
+                    </ul>
+                </div>
+
+                <div class="error-scenario" style="margin-bottom: 40px;">
+                    <h3 style="color: #333; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 3px solid #FF9800;">
+                        📌 错误类型1：概念混淆（最常见）
+                    </h3>
+                    <div style="background: #fff3e0; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                        <strong>查询问题：</strong>
+                        <p style="margin-top: 10px; font-size: 1.2em;">"高血压患者能否吃鸡蛋？"</p>
+                    </div>
+
+                    <div class="annotation-workspace">
+                        <div class="panel" style="border-left: 4px solid #FF9800;">
+                            <h3>AI错误标注</h3>
+                            <div class="doc-item irrelevant">
+                                <div class="doc-header">
+                                    <span class="doc-id">DOC001</span>
+                                    <span class="ai-suggestion">AI判断: 不相关 ❌</span>
+                                </div>
+                                <div class="doc-content">
+                                    鸡蛋黄中含有较高的胆固醇，每100克约含1500毫克胆固醇。传统观点认为高胆固醇食物会升高血脂，但最新研究表明，饮食中的胆固醇对血胆固醇的影响比预期小。
+                                </div>
+                                <div style="margin-top: 15px; padding: 10px; background: #ffebee; border-radius: 5px; border-left: 4px solid #f44336;">
+                                    <strong>错误原因：</strong>AI看到"胆固醇"就联想到高血脂，没有理解文档后半段"最新研究表明影响小"的重要信息
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="panel" style="border-left: 4px solid #4CAF50;">
+                            <h3>正确标注</h3>
+                            <div class="doc-item relevant">
+                                <div class="doc-header">
+                                    <span class="doc-id">DOC001</span>
+                                    <span class="ai-suggestion" style="background: #4CAF50;">人工判断: 相关 ✓</span>
+                                </div>
+                                <div class="doc-content">
+                                    鸡蛋黄中含有较高的胆固醇，每100克约含1500毫克胆固醇。传统观点认为高胆固醇食物会升高血脂，但最新研究表明，饮食中的胆固醇对血胆固醇的影响比预期小。
+                                </div>
+                                <div style="margin-top: 15px; padding: 10px; background: #e8f5e9; border-radius: 5px; border-left: 4px solid #4CAF50;">
+                                    <strong>正确判断：</strong>文档直接讨论了鸡蛋的营养成分和对血脂的影响，与"能否吃鸡蛋"高度相关
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="error-scenario" style="margin-bottom: 40px;">
+                    <h3 style="color: #333; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 3px solid #FF9800;">
+                        📌 错误类型2：关键词误导
+                    </h3>
+                    <div style="background: #fff3e0; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                        <strong>查询问题：</strong>
+                        <p style="margin-top: 10px; font-size: 1.2em;">"高血压患者饮食中盐的摄入建议"</p>
+                    </div>
+
+                    <div class="annotation-workspace">
+                        <div class="panel" style="border-left: 4px solid #FF9800;">
+                            <h3>AI错误标注</h3>
+                            <div class="doc-item relevant">
+                                <div class="doc-header">
+                                    <span class="doc-id">DOC002</span>
+                                    <span class="ai-suggestion">AI判断: 相关 ✓</span>
+                                </div>
+                                <div class="doc-content">
+                                    这道菜需要用盐、胡椒粉、生抽等调料来调味。先将盐撒在鱼身上腌制10分钟，然后加入胡椒粉和生抽，最后蒸8分钟即可。这是一道适合全家享用的清蒸鱼做法。
+                                </div>
+                                <div style="margin-top: 15px; padding: 10px; background: #ffebee; border-radius: 5px; border-left: 4px solid #f44336;">
+                                    <strong>错误原因：</strong>AI检测到关键词"盐"就认为相关，没有理解这是一个烹饪食谱，而非饮食建议
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="panel" style="border-left: 4px solid #4CAF50;">
+                            <h3>正确标注</h3>
+                            <div class="doc-item irrelevant">
+                                <div class="doc-header">
+                                    <span class="doc-id">DOC002</span>
+                                    <span class="ai-suggestion" style="background: #4CAF50;">人工判断: 不相关 ✗</span>
+                                </div>
+                                <div class="doc-content">
+                                    这道菜需要用盐、胡椒粉、生抽等调料来调味。先将盐撒在鱼身上腌制10分钟，然后加入胡椒粉和生抽，最后蒸8分钟即可。这是一道适合全家享用的清蒸鱼做法。
+                                </div>
+                                <div style="margin-top: 15px; padding: 10px; background: #e8f5e9; border-radius: 5px; border-left: 4px solid #4CAF50;">
+                                    <strong>正确判断：</strong>这是一个烹饪食谱，讨论的是做菜的调味步骤，并非高血压患者的饮食建议
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="error-scenario" style="margin-bottom: 40px;">
+                    <h3 style="color: #333; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 3px solid #FF9800;">
+                        📌 错误类型3：语义理解偏差
+                    </h3>
+                    <div style="background: #fff3e0; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                        <strong>查询问题：</strong>
+                        <p style="margin-top: 10px; font-size: 1.2em;">"高血压患者需要完全禁止饮酒吗？"</p>
+                    </div>
+
+                    <div class="annotation-workspace">
+                        <div class="panel" style="border-left: 4px solid #FF9800;">
+                            <h3>AI错误标注</h3>
+                            <div class="doc-item relevant">
+                                <div class="doc-header">
+                                    <span class="doc-id">DOC003</span>
+                                    <span class="ai-suggestion">AI判断: 相关 ✓</span>
+                                </div>
+                                <div class="doc-content">
+                                    酒精性肝病是由于长期过量饮酒导致的肝脏疾病，主要表现为肝功能异常、脂肪肝、肝硬化等。预防酒精性肝病的关键是控制饮酒量，避免长期大量饮酒。
+                                </div>
+                                <div style="margin-top: 15px; padding: 10px; background: #ffebee; border-radius: 5px; border-left: 4px solid #f44336;">
+                                    <strong>错误原因：</strong>AI检测到"酒精""饮酒"就认为相关，但文档讨论的是酒精性肝病预防，并非高血压患者的饮酒建议
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="panel" style="border-left: 4px solid #4CAF50;">
+                            <h3>正确标注</h3>
+                            <div class="doc-item irrelevant">
+                                <div class="doc-header">
+                                    <span class="doc-id">DOC003</span>
+                                    <span class="ai-suggestion" style="background: #4CAF50;">人工判断: 不相关 ✗</span>
+                                </div>
+                                <div class="doc-content">
+                                    酒精性肝病是由于长期过量饮酒导致的肝脏疾病，主要表现为肝功能异常、脂肪肝、肝硬化等。预防酒精性肝病的关键是控制饮酒量，避免长期大量饮酒。
+                                </div>
+                                <div style="margin-top: 15px; padding: 10px; background: #e8f5e9; border-radius: 5px; border-left: 4px solid #4CAF50;">
+                                    <strong>正确判断：</strong>文档主题是酒精性肝病预防，虽然提到饮酒，但不是针对高血压患者的专门建议
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="error-scenario" style="margin-bottom: 40px;">
+                    <h3 style="color: #333; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 3px solid #FF9800;">
+                        📌 错误类型4：上下文理解不完整
+                    </h3>
+                    <div style="background: #fff3e0; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                        <strong>查询问题：</strong>
+                        <p style="margin-top: 10px; font-size: 1.2em;">"高血压患者适合哪些运动？"</p>
+                    </div>
+
+                    <div class="annotation-workspace">
+                        <div class="panel" style="border-left: 4px solid #FF9800;">
+                            <h3>AI错误标注</h3>
+                            <div class="doc-item relevant">
+                                <div class="doc-header">
+                                    <span class="doc-id">DOC004</span>
+                                    <span class="ai-suggestion">AI判断: 相关 ✓</span>
+                                </div>
+                                <div class="doc-content">
+                                    运动对健康有益，包括高血压在内的慢性病患者都可以从适度运动中获益。高血压患者应该避免高强度的剧烈运动，如马拉松、极限运动等。
+                                </div>
+                                <div style="margin-top: 15px; padding: 10px; background: #ffebee; border-radius: 5px; border-left: 4px solid #f44336;">
+                                    <strong>错误原因：</strong>AI看到开头提到"高血压患者应该避免"就认为相关，但文档重点在反对高强度运动，没有给出积极建议
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="panel" style="border-left: 4px solid #4CAF50;">
+                            <h3>正确标注</h3>
+                            <div class="doc-item irrelevant">
+                                <div class="doc-header">
+                                    <span class="doc-id">DOC004</span>
+                                    <span class="ai-suggestion" style="background: #4CAF50;">人工判断: 不相关 ✗</span>
+                                </div>
+                                <div class="doc-content">
+                                    运动对健康有益，包括高血压在内的慢性病患者都可以从适度运动中获益。高血压患者应该避免高强度的剧烈运动，如马拉松、极限运动等。
+                                </div>
+                                <div style="margin-top: 15px; padding: 10px; background: #e8f5e9; border-radius: 5px; border-left: 4px solid #4CAF50;">
+                                    <strong>正确判断：</strong>文档只说了"不要做什么"，没有回答"适合做什么"，查询需要的是积极建议而非禁忌
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="error-scenario" style="margin-bottom: 40px;">
+                    <h3 style="color: #333; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 3px solid #FF9800;">
+                        📌 错误类型5：专业领域知识不足
+                    </h3>
+                    <div style="background: #fff3e0; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                        <strong>查询问题：</strong>
+                        <p style="margin-top: 10px; font-size: 1.2em;">"高血压患者能否服用ACE抑制剂？"</p>
+                    </div>
+
+                    <div class="annotation-workspace">
+                        <div class="panel" style="border-left: 4px solid #FF9800;">
+                            <h3>AI错误标注</h3>
+                            <div class="doc-item irrelevant">
+                                <div class="doc-header">
+                                    <span class="doc-id">DOC005</span>
+                                    <span class="ai-suggestion">AI判断: 不相关 ✗</span>
+                                </div>
+                                <div class="doc-content">
+                                    血管紧张素转换酶抑制剂（ACE抑制剂）是一类常用的降压药物，通过抑制ACE酶来扩张血管，降低血压。常用药物包括依那普利、赖诺普利等，适用于轻中度高血压患者。
+                                </div>
+                                <div style="margin-top: 15px; padding: 10px; background: #ffebee; border-radius: 5px; border-left: 4px solid #f44336;">
+                                    <strong>错误原因：</strong>AI没有医学专业知识，不理解"ACE抑制剂"和"血管紧张素转换酶抑制剂"是同一药物
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="panel" style="border-left: 4px solid #4CAF50;">
+                            <h3>正确标注</h3>
+                            <div class="doc-item relevant">
+                                <div class="doc-header">
+                                    <span class="doc-id">DOC005</span>
+                                    <span class="ai-suggestion" style="background: #4CAF50;">人工判断: 相关 ✓</span>
+                                </div>
+                                <div class="doc-content">
+                                    血管紧张素转换酶抑制剂（ACE抑制剂）是一类常用的降压药物，通过抑制ACE酶来扩张血管，降低血压。常用药物包括依那普利、赖诺普利等，适用于轻中度高血压患者。
+                                </div>
+                                <div style="margin-top: 15px; padding: 10px; background: #e8f5e9; border-radius: 5px; border-left: 4px solid #4CAF50;">
+                                    <strong>正确判断：</strong>文档明确说明ACE抑制剂是降压药物，直接回答了患者能否服用的问题
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-box" style="background: #f3e5f5; border-left-color: #9C27B0;">
+                    <h3>📊 AI标注错误统计（典型数据）</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 20px;">
+                        <div style="background: white; padding: 20px; border-radius: 10px; text-align: center;">
+                            <div style="font-size: 2.5em; font-weight: 700; color: #FF9800;">35%</div>
+                            <div>概念混淆</div>
+                        </div>
+                        <div style="background: white; padding: 20px; border-radius: 10px; text-align: center;">
+                            <div style="font-size: 2.5em; font-weight: 700; color: #FF9800;">25%</div>
+                            <div>关键词误导</div>
+                        </div>
+                        <div style="background: white; padding: 20px; border-radius: 10px; text-align: center;">
+                            <div style="font-size: 2.5em; font-weight: 700; color: #FF9800;">20%</div>
+                            <div>语义理解偏差</div>
+                        </div>
+                        <div style="background: white; padding: 20px; border-radius: 10px; text-align: center;">
+                            <div style="font-size: 2.5em; font-weight: 700; color: #FF9800;">15%</div>
+                            <div>专业知识不足</div>
+                        </div>
+                        <div style="background: white; padding: 20px; border-radius: 10px; text-align: center;">
+                            <div style="font-size: 2.5em; font-weight: 700; color: #FF9800;">5%</div>
+                            <div>其他</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-box" style="background: #e3f2fd; border-left-color: #2196F3;">
+                    <h3>💡 如何降低AI标注错误率</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+                        <div>
+                            <strong>1. 优化Prompt设计</strong>
+                            <ul style="margin-top: 10px; margin-left: 20px; line-height: 1.8;">
+                                <li>提供明确的判断标准</li>
+                                <li>给出几个标注示例</li>
+                                <li>强调常见错误类型</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <strong>2. 增加置信度评估</strong>
+                            <ul style="margin-top: 10px; margin-left: 20px; line-height: 1.8;">
+                                <li>让AI给出置信度分数</li>
+                                <li>低置信度标注人工重点审核</li>
+                                <li>记录置信度分布统计</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <strong>3. 多轮标注验证</strong>
+                            <ul style="margin-top: 10px; margin-left: 20px; line-height: 1.8;">
+                                <li>对争议文档进行二次标注</li>
+                                <li>对比多个模型的标注结果</li>
+                                <li>人工专家审核争议案例</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <strong>4. 持续模型优化</strong>
+                            <ul style="margin-top: 10px; margin-left: 20px; line-height: 1.8;">
+                                <li>使用高质量人工标注数据微调模型</li>
+                                <li>定期评估标注准确率</li>
+                                <li>根据错误案例优化策略</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 对比分析模式 -->
+            <div id="comparison-mode" class="section">
+                <div class="info-box">
+                    <h3>⚖️ 人工标注 vs AI辅助标注 对比</h3>
+                    <p>通过对比两种标注方式，了解各自的优缺点和适用场景</p>
+                </div>
+
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th width="20%">对比维度</th>
+                            <th width="40%">人工标注</th>
+                            <th width="40%">AI辅助标注</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>准确度</strong></td>
+                            <td><span class="check">✓</span> 高（专家级判断）</td>
+                            <td><span class="check">✓</span> 中高（AI+人工审核）</td>
+                        </tr>
+                        <tr>
+                            <td><strong>标注效率</strong></td>
+                            <td><span class="cross">✗</span> 低（每文档10-30秒）</td>
+                            <td><span class="check">✓</span> 高（每文档2-5秒）</td>
+                        </tr>
+                        <tr>
+                            <td><strong>成本</strong></td>
+                            <td><span class="cross">✗</span> 高（需专业人员）</td>
+                            <td><span class="check">✓</span> 中（AI计算+审核）</td>
+                        </tr>
+                        <tr>
+                            <td><strong>可扩展性</strong></td>
+                            <td><span class="cross">✗</span> 有限（受人力限制）</td>
+                            <td><span class="check">✓</span> 强（可处理百万级数据）</td>
+                        </tr>
+                        <tr>
+                            <td><strong>一致性</strong></td>
+                            <td><span class="cross">✗</span> 难以保证（不同标注者差异）</td>
+                            <td><span class="check">✓</span> 好（AI标准统一）</td>
+                        </tr>
+                        <tr>
+                            <td><strong>适用场景</strong></td>
+                            <td>小规模高质量标注、领域专家审核</td>
+                            <td>大规模标注、快速迭代、预标注</td>
+                        </tr>
+                        <tr>
+                            <td><strong>典型流程</strong></td>
+                            <td>
+                                1. 阅读文档<br>
+                                2. 判断相关性<br>
+                                3. 确认标注<br>
+                                4. 提交结果
+                            </td>
+                            <td>
+                                1. AI自动标注<br>
+                                2. 人工审核建议<br>
+                                3. 修正错误标注<br>
+                                4. 提交结果
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>工具支持</strong></td>
+                            <td>基础标注界面</td>
+                            <td>AI推荐系统、置信度显示</td>
+                        </tr>
+                        <tr>
+                            <td><strong>标注质量</strong></td>
+                            <td>95%+ （专家标注）</td>
+                            <td>90-95% （AI+人工）</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="info-box" style="margin-top: 30px; background: #f3e5f5; border-left-color: #9C27B0;">
+                    <h3>💡 推荐策略</h3>
+                    <ul>
+                        <li><strong>初期阶段：</strong>使用人工标注建立高质量ground truth数据集</li>
+                        <li><strong>训练阶段：</strong>使用高质量人工标注数据训练AI标注模型</li>
+                        <li><strong>扩展阶段：</strong>启用AI辅助标注，快速扩大数据规模</li>
+                        <li><strong>质量保证：</strong>定期抽样审核AI标注结果，持续优化模型</li>
+                    </ul>
+                </div>
+
+                <div class="annotation-workspace">
+                    <div class="panel">
+                        <h3>📈 效率对比（以1000个文档为例）</h3>
+                        <div style="margin-top: 20px;">
+                            <div style="margin-bottom: 20px;">
+                                <strong>人工标注：</strong>
+                                <div style="background: #e9ecef; height: 30px; border-radius: 15px; margin-top: 5px; overflow: hidden;">
+                                    <div style="background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
+                                        ~8.3 小时（按30秒/文档）
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <strong>AI辅助标注：</strong>
+                                <div style="background: #e9ecef; height: 30px; border-radius: 15px; margin-top: 5px; overflow: hidden;">
+                                    <div style="background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%); width: 25%; height: 100%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
+                                        ~2.1 小时（按7.5秒/文档）
+                                    </div>
+                                </div>
+                                <p style="margin-top: 5px; color: #666; font-size: 0.9em;">
+                                    ⚡ 效率提升约 <strong>4倍</strong>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel">
+                        <h3>🎯 混合标注策略</h3>
+                        <p style="margin-bottom: 20px; line-height: 1.8;">
+                            结合两种标注方式的优点，实现效率与质量的平衡：
+                        </p>
+                        <ul style="line-height: 2; margin-left: 20px;">
+                            <li><strong>高置信度文档</strong>（AI置信度>90%）：自动接受</li>
+                            <li><strong>中置信度文档</strong>（AI置信度60-90%）：AI辅助+人工审核</li>
+                            <li><strong>低置信度文档</strong>（AI置信度<60%）：纯人工标注</li>
+                            <li><strong>边缘案例文档</strong>：领域专家人工审核</li>
+                        </ul>
+
+                        <div style="margin-top: 20px; padding: 15px; background: #e8f5e9; border-radius: 8px; border-left: 4px solid #4CAF50;">
+                            <strong>预期效果：</strong>
+                            <ul style="margin-top: 10px; margin-left: 20px; line-height: 1.8;">
+                                <li>整体标注效率提升 3-4 倍</li>
+                                <li>标注质量保持在 95% 以上</li>
+                                <li>人力成本降低 70%+</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 模拟文档数据
+        const sampleDocuments = [
+            {
+                id: "DOC001",
+                content: "高血压患者在饮食方面应该避免高盐食物，每日盐摄入量应控制在6克以下。建议少吃咸菜、腌制品、酱油等高盐调味品，多食用新鲜蔬菜水果。",
+                isRelevant: true
+            },
+            {
+                id: "DOC002",
+                content: "糖尿病患者需要控制碳水化合物的摄入，建议选择低升糖指数的食物。主食可以选择糙米、全麦面包等全谷物，避免精制糖和甜食。",
+                isRelevant: false
+            },
+            {
+                id: "DOC003",
+                content: "高血压患者应避免高脂肪食物，特别是饱和脂肪酸含量高的动物脂肪。建议选择瘦肉、鱼类等优质蛋白，减少油炸食品的摄入。",
+                isRelevant: true
+            },
+            {
+                id: "DOC004",
+                content: "冠心病患者需要注意避免剧烈运动和情绪激动，保持良好的心理状态。建议进行适度有氧运动，如散步、太极拳等。",
+                isRelevant: false
+            },
+            {
+                id: "DOC005",
+                content: "高血压患者应该戒烟限酒，避免饮用浓茶和咖啡。这些饮品中含有咖啡因和酒精，会导致血压升高，增加心血管疾病风险。",
+                isRelevant: true
+            }
+        ];
+
+        // AI标注结果（模拟）
+        const aiAnnotations = {
+            DOC001: true,
+            DOC002: false,
+            DOC003: true,
+            DOC004: false,
+            DOC005: true
+        };
+
+        const aiComment = `根据查询"高血压患者应该注意哪些饮食禁忌"，我对检索到的5个文档进行了分析：
+
+**判断标准：**
+1. 文档是否明确提到高血压相关的饮食建议或禁忌
+2. 内容是否与饮食相关（盐、脂肪、烟酒等）
+3. 信息是否准确且具有指导意义
+
+**标注结果：**
+- DOC001 ✓ （明确提到高血压患者应避免高盐食物）
+- DOC002 ✗ （讨论的是糖尿病而非高血压）
+- DOC003 ✓ （明确提到高血压患者应避免高脂肪食物）
+- DOC004 ✗ （讨论的是冠心病运动建议，与饮食无关）
+- DOC005 ✓ （明确提到高血压患者应戒烟限酒）
+
+**置信度：** 95%（所有判断都有明确的依据）`;
+
+        // 人工标注状态
+        let manualAnnotations = {};
+
+        // AI辅助标注状态（用户可以修改AI的建议）
+        let aiUserAnnotations = {};
+        let aiActivated = false;
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            renderManualDocs();
+            renderAIDocs();
+        });
+
+        // 切换模式
+        function switchMode(mode) {
+            // 更新按钮状态
+            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // 隐藏所有section
+            document.querySelectorAll('.section').forEach(section => section.classList.remove('active'));
+
+            // 显示选中的section
+            document.getElementById(`${mode}-mode`).classList.add('active');
+        }
+
+        // 渲染人工标注文档列表
+        function renderManualDocs() {
+            const container = document.getElementById('manual-docs-container');
+            container.innerHTML = '';
+
+            sampleDocuments.forEach((doc, index) => {
+                const docElement = document.createElement('div');
+                docElement.className = 'doc-item';
+                docElement.id = `manual-doc-${doc.id}`;
+
+                docElement.innerHTML = `
+                    <div class="doc-header">
+                        <span class="doc-id">${doc.id}</span>
+                        <div class="doc-actions">
+                            <button class="relevant-btn" onclick="toggleManualRelevance('${doc.id}', true)">
+                                ✓ 相关
+                            </button>
+                            <button class="irrelevant-btn" onclick="toggleManualRelevance('${doc.id}', false)">
+                                ✗ 不相关
+                            </button>
+                        </div>
+                    </div>
+                    <div class="doc-content">${doc.content}</div>
+                `;
+
+                container.appendChild(docElement);
+            });
+
+            updateManualStats();
+        }
+
+        // 切换人工标注
+        function toggleManualRelevance(docId, isRelevant) {
+            const docElement = document.getElementById(`manual-doc-${docId}`);
+            const relevantBtn = docElement.querySelector('.relevant-btn');
+            const irrelevantBtn = docElement.querySelector('.irrelevant-btn');
+
+            if (manualAnnotations[docId] === isRelevant) {
+                // 取消标注
+                delete manualAnnotations[docId];
+                relevantBtn.classList.remove('active');
+                irrelevantBtn.classList.remove('active');
+                docElement.classList.remove('relevant', 'irrelevant');
+            } else {
+                // 添加标注
+                manualAnnotations[docId] = isRelevant;
+                relevantBtn.classList.toggle('active', isRelevant);
+                irrelevantBtn.classList.toggle('active', !isRelevant);
+                docElement.classList.toggle('relevant', isRelevant);
+                docElement.classList.toggle('irrelevant', !isRelevant);
+            }
+
+            updateManualStats();
+        }
+
+        // 更新人工标注统计
+        function updateManualStats() {
+            const annotatedCount = Object.keys(manualAnnotations).length;
+            const relevantCount = Object.values(manualAnnotations).filter(v => v).length;
+
+            document.getElementById('manual-annotated').textContent = annotatedCount;
+            document.getElementById('manual-relevant').textContent = relevantCount;
+        }
+
+        // 重置人工标注
+        function resetManualAnnotation() {
+            manualAnnotations = {};
+            document.querySelectorAll('#manual-docs-container .doc-item').forEach(doc => {
+                doc.classList.remove('relevant', 'irrelevant');
+                doc.querySelector('.relevant-btn').classList.remove('active');
+                doc.querySelector('.irrelevant-btn').classList.remove('active');
+            });
+            updateManualStats();
+
+            const messageEl = document.getElementById('manual-save-message');
+            messageEl.style.display = 'block';
+            messageEl.style.background = '#e3f2fd';
+            messageEl.style.color = '#1976D2';
+            messageEl.innerHTML = '✓ 标注已重置';
+            setTimeout(() => messageEl.style.display = 'none', 2000);
+        }
+
+        // 保存人工标注
+        function saveManualAnnotation() {
+            const annotatedCount = Object.keys(manualAnnotations).length;
+
+            if (annotatedCount === 0) {
+                const messageEl = document.getElementById('manual-save-message');
+                messageEl.style.display = 'block';
+                messageEl.style.background = '#ffebee';
+                messageEl.style.color = '#c62828';
+                messageEl.innerHTML = '✗ 请至少标注一个文档';
+                setTimeout(() => messageEl.style.display = 'none', 2000);
+                return;
+            }
+
+            // 模拟保存
+            console.log('保存人工标注:', manualAnnotations);
+
+            const messageEl = document.getElementById('manual-save-message');
+            messageEl.style.display = 'block';
+            messageEl.style.background = '#e8f5e9';
+            messageEl.style.color = '#388E3C';
+            messageEl.innerHTML = `✓ 已保存 ${annotatedCount} 个文档的标注`;
+            setTimeout(() => messageEl.style.display = 'none', 2000);
+        }
+
+        // 渲染AI辅助标注文档列表
+        function renderAIDocs() {
+            const container = document.getElementById('ai-docs-container');
+            container.innerHTML = '';
+
+            sampleDocuments.forEach(doc => {
+                const docElement = document.createElement('div');
+                docElement.className = 'doc-item';
+                docElement.id = `ai-doc-${doc.id}`;
+
+                docElement.innerHTML = `
+                    <div class="doc-header">
+                        <span class="doc-id">${doc.id}</span>
+                        ${aiActivated ? `<span class="ai-suggestion">AI建议: ${aiAnnotations[doc.id] ? '相关' : '不相关'}</span>` : ''}
+                        <div class="doc-actions">
+                            <button class="relevant-btn" onclick="toggleAIRelevance('${doc.id}', true)">
+                                ✓ 相关
+                            </button>
+                            <button class="irrelevant-btn" onclick="toggleAIRelevance('${doc.id}', false)">
+                                ✗ 不相关
+                            </button>
+                        </div>
+                    </div>
+                    <div class="doc-content">${doc.content}</div>
+                `;
+
+                container.appendChild(docElement);
+            });
+
+            updateAIStats();
+        }
+
+        // 触发AI标注
+        function triggerAIAnnotation() {
+            aiActivated = true;
+            aiUserAnnotations = {...aiAnnotations}; // 复制AI的建议
+
+            // 显示AI助手
+            document.getElementById('ai-assistant').style.display = 'block';
+            document.getElementById('ai-comment').innerHTML = aiComment.replace(/\n/g, '<br>');
+
+            // 重新渲染文档列表，显示AI建议
+            renderAIDocs();
+
+            // 应用AI标注到界面
+            Object.entries(aiAnnotations).forEach(([docId, isRelevant]) => {
+                const docElement = document.getElementById(`ai-doc-${docId}`);
+                if (docElement) {
+                    const relevantBtn = docElement.querySelector('.relevant-btn');
+                    const irrelevantBtn = docElement.querySelector('.irrelevant-btn');
+                    relevantBtn.classList.add('active');
+                    irrelevantBtn.classList.add('active');
+                    docElement.classList.add(isRelevant ? 'relevant' : 'irrelevant');
+                }
+            });
+
+            updateAIStats();
+
+            const messageEl = document.getElementById('ai-save-message');
+            messageEl.style.display = 'block';
+            messageEl.style.background = '#fff3e0';
+            messageEl.style.color = '#E65100';
+            messageEl.innerHTML = '✓ AI已完成自动标注，请审核';
+            setTimeout(() => messageEl.style.display = 'none', 3000);
+        }
+
+        // 切换AI辅助标注
+        function toggleAIRelevance(docId, isRelevant) {
+            if (!aiActivated) {
+                const messageEl = document.getElementById('ai-save-message');
+                messageEl.style.display = 'block';
+                messageEl.style.background = '#ffebee';
+                messageEl.style.color = '#c62828';
+                messageEl.innerHTML = '✗ 请先点击"AI自动标注"按钮';
+                setTimeout(() => messageEl.style.display = 'none', 2000);
+                return;
+            }
+
+            const docElement = document.getElementById(`ai-doc-${docId}`);
+            const relevantBtn = docElement.querySelector('.relevant-btn');
+            const irrelevantBtn = docElement.querySelector('.irrelevant-btn');
+
+            // 更新标注
+            aiUserAnnotations[docId] = isRelevant;
+            relevantBtn.classList.add('active');
+            irrelevantBtn.classList.add('active');
+            docElement.classList.remove('relevant', 'irrelevant');
+            docElement.classList.add(isRelevant ? 'relevant' : 'irrelevant');
+
+            updateAIStats();
+        }
+
+        // 更新AI标注统计
+        function updateAIStats() {
+            const annotatedCount = aiActivated ? Object.keys(aiUserAnnotations).length : 0;
+            const relevantCount = aiActivated ? Object.values(aiUserAnnotations).filter(v => v).length : 0;
+
+            document.getElementById('ai-annotated').textContent = annotatedCount;
+            document.getElementById('ai-relevant').textContent = relevantCount;
+        }
+
+        // 重置AI标注
+        function resetAIAnnotation() {
+            aiActivated = false;
+            aiUserAnnotations = {};
+            document.getElementById('ai-assistant').style.display = 'none';
+
+            renderAIDocs();
+
+            const messageEl = document.getElementById('ai-save-message');
+            messageEl.style.display = 'block';
+            messageEl.style.background = '#e3f2fd';
+            messageEl.style.color = '#1976D2';
+            messageEl.innerHTML = '✓ 标注已重置';
+            setTimeout(() => messageEl.style.display = 'none', 2000);
+        }
+
+        // 保存AI辅助标注
+        function saveAIAnnotation() {
+            if (!aiActivated) {
+                const messageEl = document.getElementById('ai-save-message');
+                messageEl.style.display = 'block';
+                messageEl.style.background = '#ffebee';
+                messageEl.style.color = '#c62828';
+                messageEl.innerHTML = '✗ 请先完成AI标注和审核';
+                setTimeout(() => messageEl.style.display = 'none', 2000);
+                return;
+            }
+
+            // 计算与AI原始标注的差异
+            let differences = 0;
+            Object.keys(aiAnnotations).forEach(docId => {
+                if (aiAnnotations[docId] !== aiUserAnnotations[docId]) {
+                    differences++;
+                }
+            });
+
+            console.log('保存AI辅助标注:', aiUserAnnotations);
+
+            const messageEl = document.getElementById('ai-save-message');
+            messageEl.style.display = 'block';
+            messageEl.style.background = '#e8f5e9';
+            messageEl.style.color = '#388E3C';
+            messageEl.innerHTML = `✓ 已保存标注（${differences} 处人工修正）`;
+            setTimeout(() => messageEl.style.display = 'none', 2000);
+        }
+    </script>
+</body>
+</html>
